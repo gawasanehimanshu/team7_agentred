@@ -1,0 +1,15 @@
+{
+  "summary": [
+    {
+      "setting": "Ollama target, adaptive",
+      "runs": 3,
+      "avg_trials": 15.0,
+      "avg_findings": 3.0,
+      "techniques_covered": 3,
+      "false_positive_rate": 0.0,
+      "false_negatives": 0,
+      "avg_seconds": 551.9
+    }
+  ],
+  "review": []
+}

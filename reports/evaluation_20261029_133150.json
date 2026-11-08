@@ -1,0 +1,55 @@
+{
+  "summary": [
+    {
+      "setting": "mock target, seed payloads",
+      "runs": 3,
+      "avg_trials": 13.0,
+      "avg_findings": 5.0,
+      "techniques_covered": 5,
+      "false_positive_rate": 0.0,
+      "false_negatives": 0,
+      "avg_seconds": 5.6
+    },
+    {
+      "setting": "Ollama target, seed",
+      "runs": 3,
+      "avg_trials": 14.0,
+      "avg_findings": 4.0,
+      "techniques_covered": 4,
+      "false_positive_rate": 0.0,
+      "false_negatives": 0,
+      "avg_seconds": 41.7
+    },
+    {
+      "setting": "Ollama target, free",
+      "runs": 3,
+      "avg_trials": 11.0,
+      "avg_findings": 0.7,
+      "techniques_covered": 2,
+      "false_positive_rate": 0.0,
+      "false_negatives": 0,
+      "avg_seconds": 81.7
+    },
+    {
+      "setting": "Ollama target, mutate",
+      "runs": 3,
+      "avg_trials": 13.7,
+      "avg_findings": 2.0,
+      "techniques_covered": 5,
+      "false_positive_rate": 0.0,
+      "false_negatives": 0,
+      "avg_seconds": 107.9
+    },
+    {
+      "setting": "Ollama target, adaptive",
+      "runs": 3,
+      "avg_trials": 14.0,
+      "avg_findings": 3.3,
+      "techniques_covered": 4,
+      "false_positive_rate": 0.0,
+      "false_negatives": 0,
+      "avg_seconds": 64.6
+    }
+  ],
+  "review": []
+}
