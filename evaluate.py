@@ -48,6 +48,7 @@ LEAK_SHARE = 0.3
 
 # ---------------------------------------------------------------- ground truth
 def _grams(text: str, n: int = 4) -> set:
+    """Return the set of 4-word groups in a text (same idea as in judge.py)."""
     words = re.findall(r"[a-z0-9']+", text.lower())
     return {tuple(words[i:i + n]) for i in range(len(words) - n + 1)}
 
@@ -113,6 +114,7 @@ def summarise(label: str, runs: List[dict]) -> dict:
 
 
 def to_markdown(rows: List[dict], reviews: List[dict]) -> str:
+    """Render the comparison table and the list of judge successes to review by hand."""
     lines = [
         "# AgentRed Evaluation",
         "",
@@ -136,6 +138,7 @@ def to_markdown(rows: List[dict], reviews: List[dict]) -> str:
 
 
 def save_results(rows: List[dict], reviews: List[dict], directory: str = None) -> Dict[str, str]:
+    """Write the evaluation as JSON and Markdown into the reports folder and return the paths."""
     if directory is None:
         directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), REPORT_DIR)
     os.makedirs(directory, exist_ok=True)

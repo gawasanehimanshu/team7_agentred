@@ -55,6 +55,7 @@ DEFAULT_REMEDIATION = "Review the system prompt and add an output filter for con
 
 
 def _rank(severity: str) -> int:
+    """Return the position of a severity in SEVERITY_LEVELS (0 is the most severe)."""
     return SEVERITY_LEVELS.index(severity)
 
 

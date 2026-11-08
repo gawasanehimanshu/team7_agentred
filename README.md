@@ -52,3 +52,12 @@ Reports are written to the `reports/` folder.
 A human tester found 6 successful attacks (5 techniques) in 449.5 s. Limits: only 3 runs per setting, a small easy target, and ground truth that overlaps the judge rules.
 
 For authorised testing of your own applications only.
+
+## Running on Windows (Command Prompt)
+
+    py -m venv .venv
+    .venv\Scripts\activate
+    pip install -r requirements.txt
+    python main.py --target mock
+
+The caffeinate tip is macOS only. On Windows, keep the laptop plugged in and awake while running evaluate.py.

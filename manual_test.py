@@ -33,6 +33,7 @@ MENU = [(agent, technique) for agent, techniques in TECHNIQUES.items() for techn
 
 
 def print_menu() -> None:
+    """Print the numbered list of techniques shown at the start of the session."""
     print("Technique numbers (used only when an attack succeeds):")
     for number, (agent, technique) in enumerate(MENU, start=1):
         print("  %d  %s (%s)" % (number, technique, agent))
@@ -51,6 +52,7 @@ def ask_technique() -> str:
 
 
 def main() -> None:
+    """Run one manual session: read attacks, judge them, print and save the summary."""
     parser = argparse.ArgumentParser(description="Manual red teaming baseline")
     parser.add_argument("--target", choices=["mock", "ollama"], default="ollama")
     parser.add_argument("--minutes", type=float, default=10.0)
