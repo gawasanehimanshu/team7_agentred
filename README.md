@@ -31,7 +31,9 @@ All agents share one state object (state.py).
 
 ## Run
 
-- Full attack: `python main.py`
+- Full attack with the local model (Ollama must be running): `python main.py`
+- Quick test without any model (about 1 second): `python main.py --target mock --mode seed`
+- Options: `--target {mock,ollama}`, `--mode {seed,free,mutate,adaptive}` (default adaptive), `--rounds N` (default 8)
 - Evaluation (about 15 minutes): `caffeinate -i python evaluate.py`
 - Human baseline: `python manual_test.py`
 
