@@ -25,6 +25,7 @@ Run this file directly to test the whole workflow:
     python commander.py            (mock target, no LLM)
     python commander.py ollama     (real target, LLM payloads, LLM judge)
 """
+# ===== 1. IMPORTS =====
 import sys
 import time
 from typing import Callable, Optional, Tuple
@@ -37,14 +38,12 @@ from judge import JudgeEvaluator
 from state import AttackState, new_state
 from targets import TargetAdapter, make_target, target_config
 
-# Severity ranks run from 0 (CRITICAL) upward, so this value is worse than any real
-# rank. An attacker with no success sorts last when the Commander breaks ties.
+# ===== 2. CONSTANT: sort value for an attacker without any success =====
 NO_FINDING = len(SEVERITY_LEVELS)   # sort value for an attacker without any success
 
 
+# ===== 3. HISTORY HELPERS: small functions that read the attack history =====
 # ---------------------------------------------------------------- history helpers
-# These helpers only read the history. They never change the state, so the Commander
-# can call them as often as it likes without side effects.
 def _trials_of(history: list, name: str) -> list:
     return [t for t in history if t["agent"] == name]
 
@@ -74,53 +73,54 @@ def _best_severity(history: list, name: str) -> int:
     return min(ranks) if ranks else NO_FINDING
 
 
+# ===== 4. COMMANDER NODE: decides which attacker runs next, or stops =====
 # ---------------------------------------------------------------- commander node
 def commander_node(state: AttackState) -> dict:
     """Decide which node runs next and write the decision to the state."""
-    # Safety stop first: whatever else is true, the run ends at the round limit.
+    # Stop when the round limit is reached (guard against uncontrolled execution).
     if state["round"] >= state["max_rounds"]:
         return {"next_agent": "end"}
 
     # First pass: take the next attacker from the plan queue.
-    # Copy the queue before popping so the old state object is never modified in place;
-    # LangGraph merges the returned dict into the shared state.
     queue = list(state["plan_queue"])
     if queue:
         return {"next_agent": queue.pop(0), "plan_queue": queue}
 
     # Further runs: only attackers with untested techniques and runs left.
     history = state["history"]
+    # Build one entry for every attacker that can still run.
     candidates = []
     for name in ATTACKER_NAMES:
         runs = _runs_done(history, name)
         if runs < MAX_RUNS_PER_ATTACKER and _untested(history, name):
-            # 0 sorts before 1, so an attacker whose last run succeeded is preferred.
             promising = 0 if _last_run_won(history, name) else 1
-            # Tuple order is the priority order: fewest runs, then promising, then best
-            # severity, then name (the name only makes ties deterministic).
             candidates.append((runs, promising, _best_severity(history, name), name))
+    # Nothing left to try: end the attack phase.
     if not candidates:
         return {"next_agent": "end"}
-    # Python sorts tuples element by element, so the first tuple is the best choice.
+    # Sort by priority (fewest runs, last run won, most severe finding) and take the first.
     candidates.sort()
     return {"next_agent": candidates[0][3]}
 
 
+# ===== 5. ROUTER: conditional edge that follows the Commander's decision =====
 def route(state: AttackState) -> str:
     """Conditional edge: the Commander's decision is the next node."""
     return state["next_agent"]
 
 
+# ===== 6. GRAPH ASSEMBLY: connect the Commander, the attackers and the Report Agent =====
 # ---------------------------------------------------------------- graph assembly
 def build_graph(target: TargetAdapter, judge: JudgeEvaluator, generator: PayloadGenerator,
                 report_node: Optional[Callable] = None):
     """Compile the LangGraph workflow. report_node is the Report Agent (optional)."""
+    # Add one node for the Commander and one for each attacker.
     graph = StateGraph(AttackState)
     graph.add_node("commander", commander_node)
     for name in ATTACKER_NAMES:
         graph.add_node(name, make_attacker(name, target, judge, generator))
 
-    # Map the Commander's decision string to the node that must run next.
+    # Routing table: the Commander's decision names the next node. The Report Agent is last.
     routes = {name: name for name in ATTACKER_NAMES}
     if report_node is not None:
         graph.add_node("report", report_node)
@@ -129,6 +129,7 @@ def build_graph(target: TargetAdapter, judge: JudgeEvaluator, generator: Payload
     else:
         routes["end"] = END
 
+    # Start at the Commander. It routes to an attacker or to the end.
     graph.set_entry_point("commander")
     graph.add_conditional_edges("commander", route, routes)
     for name in ATTACKER_NAMES:
@@ -136,6 +137,7 @@ def build_graph(target: TargetAdapter, judge: JudgeEvaluator, generator: Payload
     return graph.compile()
 
 
+# ===== 7. RUN ONE ATTACK: run the whole workflow once and measure the time =====
 def run_attack(target: TargetAdapter, judge: JudgeEvaluator, generator: PayloadGenerator,
                max_rounds: int = MAX_ROUNDS,
                report_node: Optional[Callable] = None,
@@ -148,15 +150,15 @@ def run_attack(target: TargetAdapter, judge: JudgeEvaluator, generator: PayloadG
     Returns the final state, the list of nodes in the order they ran, and the
     elapsed time in seconds.
     """
+    # Build the graph and create a fresh state for this run.
     app = build_graph(target, judge, generator, report_node)
     state = new_state(target_config(), ATTACKER_NAMES, max_rounds)
     order = []
     started = time.time()
     # Each round uses two graph steps (commander and attacker), so allow plenty.
-    # stream() yields one update per finished node. Merging each update into a local
-    # copy of the state lets the caller show live progress and read the final state.
     for chunk in app.stream(dict(state), config={"recursion_limit": 100},
                             stream_mode="updates"):
+        # After every node: record the order, merge the update into the state and report progress.
         for node, update in chunk.items():
             order.append(node)
             state.update(update or {})
@@ -165,8 +167,10 @@ def run_attack(target: TargetAdapter, judge: JudgeEvaluator, generator: PayloadG
     return state, order, time.time() - started
 
 
+# ===== 8. SELF TEST: python commander.py [ollama] =====
 # ---------------------------------------------------------------- self test
 if __name__ == "__main__":
+    # Run the full workflow once and print a short summary.
     kind = sys.argv[1] if len(sys.argv) > 1 else "mock"
     live = kind == "ollama"
     final, order, seconds = run_attack(make_target(kind), JudgeEvaluator(use_llm=live),
