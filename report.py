@@ -19,6 +19,7 @@ Run this file directly to produce a report from a full run:
     python report.py            (mock target, no LLM)
     python report.py ollama     (real target, LLM payloads, LLM judge)
 """
+# ===== 1. IMPORTS =====
 import json
 import os
 import sys
@@ -28,6 +29,7 @@ from typing import Dict, List, Optional
 from config import MODEL_NAME, REPORT_DIR, SEVERITY_LEVELS
 from state import AttackState
 
+# ===== 2. REMEDIATION ADVICE: a fix suggestion for each of the 9 techniques =====
 # Advice for every attack technique. Shown next to each finding.
 REMEDIATION = {
     "cognitive_overload": "Limit the length and complexity of user input, and apply the same "
@@ -54,11 +56,13 @@ REMEDIATION = {
 DEFAULT_REMEDIATION = "Review the system prompt and add an output filter for confidential data."
 
 
+# ===== 3. HELPER: severity ranking =====
 def _rank(severity: str) -> int:
     """Return the position of a severity in SEVERITY_LEVELS (0 is the most severe)."""
     return SEVERITY_LEVELS.index(severity)
 
 
+# ===== 4. BUILD THE REPORT: group, deduplicate, rank the findings and add the totals (JSON structure) =====
 def build_report(state: AttackState) -> dict:
     """Turn the attack history into a structured report (steps 1 to 3)."""
     # Step 1: group all trials by attacker and technique.
@@ -113,6 +117,7 @@ def build_report(state: AttackState) -> dict:
     }
 
 
+# ===== 5. MARKDOWN OUTPUT: code-block helper and the readable report =====
 def _fence(text: str, limit: int = 500) -> str:
     """Format text as a Markdown code block, shortened and safe to embed."""
     text = text.strip().replace("```", "'''")
@@ -142,6 +147,7 @@ def build_markdown(report: dict) -> str:
         "| Trial success rate | %.0f%% |" % (report["success_rate"] * 100),
         "| Unique findings | %d |" % report["unique_findings"],
     ]
+    # One summary row for each severity level.
     for severity, count in report["findings_by_severity"].items():
         lines.append("| %s findings | %d |" % (severity.capitalize(), count))
     # One section per finding, with the proof of concept and the remediation advice.
@@ -167,6 +173,7 @@ def build_markdown(report: dict) -> str:
             "Remediation: " + f["remediation"],
             "",
         ]
+    # Section for techniques that never succeeded.
     lines += ["## Techniques that did not succeed", ""]
     if report["not_exploited"]:
         for item in report["not_exploited"]:
@@ -174,11 +181,13 @@ def build_markdown(report: dict) -> str:
                 item["technique"], item["agent"], item["attempts"]))
     else:
         lines.append("- none")
+    # Section with the notes the agents shared during the run.
     lines += ["", "## Notes shared between agents", ""]
     lines += ["- " + note for note in report["insights"]] or ["- none"]
     return "\n".join(lines) + "\n"
 
 
+# ===== 6. WRITE FILES: save the JSON and Markdown reports in the reports folder =====
 def write_report(report: dict, directory: Optional[str] = None) -> Dict[str, str]:
     """Write the JSON and Markdown files (step 4) and return their paths."""
     if directory is None:
@@ -196,6 +205,7 @@ def write_report(report: dict, directory: Optional[str] = None) -> Dict[str, str
     return paths
 
 
+# ===== 7. LANGGRAPH NODE: the last step of the workflow, it calls the functions above =====
 def report_node(state: AttackState) -> dict:
     """LangGraph node: build the report, write both files, store it in the state."""
     report = build_report(state)
@@ -210,11 +220,15 @@ if __name__ == "__main__":
     from judge import JudgeEvaluator
     from targets import make_target
 
+    # ===== 8. SELF TEST: python report.py =====
+    # Choose the target from the command line (mock by default, ollama for the real run).
     kind = sys.argv[1] if len(sys.argv) > 1 else "mock"
     live = kind == "ollama"
+    # Run the full workflow once and get the final state.
     final, order, seconds = run_attack(make_target(kind), JudgeEvaluator(use_llm=live),
                                        PayloadGenerator(use_llm=live), report_node=report_node)
     result = final["final_report"]
+    # Print a short summary and the paths of the saved files.
     print("order :", " > ".join(n for n in order if n != "commander"))
     print("overall risk:", result["overall_risk"], "  findings:", result["unique_findings"],
           "  trials:", result["trials"], "  seconds: %.1f" % seconds)
