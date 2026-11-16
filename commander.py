@@ -37,10 +37,14 @@ from judge import JudgeEvaluator
 from state import AttackState, new_state
 from targets import TargetAdapter, make_target, target_config
 
+# Severity ranks run from 0 (CRITICAL) upward, so this value is worse than any real
+# rank. An attacker with no success sorts last when the Commander breaks ties.
 NO_FINDING = len(SEVERITY_LEVELS)   # sort value for an attacker without any success
 
 
 # ---------------------------------------------------------------- history helpers
+# These helpers only read the history. They never change the state, so the Commander
+# can call them as often as it likes without side effects.
 def _trials_of(history: list, name: str) -> list:
     return [t for t in history if t["agent"] == name]
 
@@ -73,10 +77,13 @@ def _best_severity(history: list, name: str) -> int:
 # ---------------------------------------------------------------- commander node
 def commander_node(state: AttackState) -> dict:
     """Decide which node runs next and write the decision to the state."""
+    # Safety stop first: whatever else is true, the run ends at the round limit.
     if state["round"] >= state["max_rounds"]:
         return {"next_agent": "end"}
 
     # First pass: take the next attacker from the plan queue.
+    # Copy the queue before popping so the old state object is never modified in place;
+    # LangGraph merges the returned dict into the shared state.
     queue = list(state["plan_queue"])
     if queue:
         return {"next_agent": queue.pop(0), "plan_queue": queue}
@@ -87,10 +94,14 @@ def commander_node(state: AttackState) -> dict:
     for name in ATTACKER_NAMES:
         runs = _runs_done(history, name)
         if runs < MAX_RUNS_PER_ATTACKER and _untested(history, name):
+            # 0 sorts before 1, so an attacker whose last run succeeded is preferred.
             promising = 0 if _last_run_won(history, name) else 1
+            # Tuple order is the priority order: fewest runs, then promising, then best
+            # severity, then name (the name only makes ties deterministic).
             candidates.append((runs, promising, _best_severity(history, name), name))
     if not candidates:
         return {"next_agent": "end"}
+    # Python sorts tuples element by element, so the first tuple is the best choice.
     candidates.sort()
     return {"next_agent": candidates[0][3]}
 
@@ -109,6 +120,7 @@ def build_graph(target: TargetAdapter, judge: JudgeEvaluator, generator: Payload
     for name in ATTACKER_NAMES:
         graph.add_node(name, make_attacker(name, target, judge, generator))
 
+    # Map the Commander's decision string to the node that must run next.
     routes = {name: name for name in ATTACKER_NAMES}
     if report_node is not None:
         graph.add_node("report", report_node)
@@ -141,6 +153,8 @@ def run_attack(target: TargetAdapter, judge: JudgeEvaluator, generator: PayloadG
     order = []
     started = time.time()
     # Each round uses two graph steps (commander and attacker), so allow plenty.
+    # stream() yields one update per finished node. Merging each update into a local
+    # copy of the state lets the caller show live progress and read the final state.
     for chunk in app.stream(dict(state), config={"recursion_limit": 100},
                             stream_mode="updates"):
         for node, update in chunk.items():

@@ -34,6 +34,7 @@ class AttackState(TypedDict):
     next_agent: str                   # routing decision made by the Commander
 
 
+# Every list starts empty and round starts at 0; the nodes only append or update.
 def new_state(target_config: Dict[str, str], plan_queue: List[str],
               max_rounds: int = MAX_ROUNDS) -> AttackState:
     """Build a fresh state for one run against one target."""

@@ -193,9 +193,11 @@ class PayloadGenerator:
                  insights: List[str], previous: List[str]) -> Tuple[str, str]:
         """Return (payload, source) where source is 'seed', 'llm' or 'mutate'."""
         seeds = spec["seeds"]
+        # Rotate through the seed payloads: the first run uses seed 0, the next run seed 1.
         seed = seeds[len(previous) % len(seeds)]
         if self.llm is None or self.mode == "seed":
             return seed, "seed"
+        # free: the model writes a new attack from the technique description alone.
         if self.mode == "free":
             human = ("Technique: " + technique + " - " + spec["description"] + "\n"
                      "Target: " + target_desc + "\n"
@@ -206,8 +208,11 @@ class PayloadGenerator:
                        "Return it in a list called payloads.")
             text = self._ask(SYSTEM_FREE, human)
             return (text, "llm") if text else (seed, "seed")
+        # adaptive: the first attempt at a technique is the proven seed payload; only later
+        # attempts are rewritten by the model.
         if self.mode == "adaptive" and not previous:
             return seed, "seed"
+        # mutate: the model rewrites the seed with new wording but keeps the same goal.
         if self.mode in ("mutate", "adaptive"):
             human = ("Technique: " + technique + " - " + spec["description"] + "\n"
                      "Original test message: " + seed + "\n"
@@ -233,6 +238,7 @@ def make_attacker(name: str, target: TargetAdapter, judge: JudgeEvaluator,
         history = list(state["history"])
         insights = list(state["insights"])
 
+        # Techniques of this attacker that already worked in an earlier run.
         succeeded = {t["technique"] for t in history if t["agent"] == name and t["success"]}
 
         for technique, spec in TECHNIQUES[name].items():
@@ -243,6 +249,7 @@ def make_attacker(name: str, target: TargetAdapter, judge: JudgeEvaluator,
                             if t["agent"] == name and t["technique"] == technique]
                 payload, source = generator.generate(technique, spec, target_desc,
                                                      insights, previous)
+                # The attacker sends the payload to the target and the judge scores the answer.
                 response = target.query(payload)
                 verdict = judge.evaluate(config, payload, response)
                 history.append({
@@ -256,9 +263,11 @@ def make_attacker(name: str, target: TargetAdapter, judge: JudgeEvaluator,
                     note = "%s/%s succeeded (%s)" % (name, technique, verdict.severity)
                 else:
                     note = "%s/%s was refused" % (name, technique)
+                # insights is the shared memory between agents; each note is stored only once.
                 if note not in insights:
                     insights.append(note)
 
+        # Returning only the changed keys lets LangGraph update the shared state.
         return {"history": history, "insights": insights, "round": state["round"] + 1}
 
     return node

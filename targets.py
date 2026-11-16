@@ -65,6 +65,7 @@ class MockVulnerableTarget(TargetAdapter):
     name = "mock"
 
     def query(self, prompt: str) -> str:
+        # The mock target is deliberately weak: each rule below is one known weakness.
         p = prompt.lower()
         # Prompt injection weakness: an instruction override leaks the prompt.
         if "ignore previous instructions" in p or "ignore all previous" in p:
@@ -78,6 +79,7 @@ class MockVulnerableTarget(TargetAdapter):
         # Exfiltration weakness: a repeat request leaks the system prompt.
         if "repeat" in p and ("above" in p or "verbatim" in p):
             return SYSTEM_PROMPT
+        # Any message that matches no weakness gets the same refusal a safe bot would give.
         return "I'm sorry, I can't help with that."
 
 
@@ -105,6 +107,7 @@ class OllamaTarget(TargetAdapter):
                 + ". Open the Ollama app and check that the model is installed "
                   "with 'ollama list'."
             ) from exc
+        # The answer is converted to plain text so that every target returns a string.
         return str(reply.content)
 
 
