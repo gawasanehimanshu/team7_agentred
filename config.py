@@ -4,6 +4,7 @@ Every tunable value lives here so that the other modules never hard-code
 model names, limits or paths. Change a value once and the whole system follows.
 """
 
+# ===== 1. LLM BACKEND: model name, server address and temperatures =====
 # ---------------------------------------------------------------- LLM backend
 # Model served by the local Ollama server. Used by the target, the judge and
 # the attacker payload generator.
@@ -23,6 +24,7 @@ JUDGE_TEMPERATURE = 0.0
 # Sampling temperature for the Ollama target application.
 TARGET_TEMPERATURE = 0.2
 
+# ===== 2. WORKFLOW LIMITS: rounds, runs, payloads and retries =====
 # ---------------------------------------------------------------- workflow
 # Guard against uncontrolled execution: the Commander stops after this many
 # attacker rounds even if it still has ideas.
@@ -41,6 +43,7 @@ GENERATOR_RETRIES = 2
 # How many times the judge retries when the model returns an invalid verdict.
 JUDGE_RETRIES = 3
 
+# ===== 3. VOCABULARY: attacker names and severity levels =====
 # ---------------------------------------------------------------- vocabulary
 # Names of the attacker agents. The Commander and the report use these names.
 ATTACKER_NAMES = ["prompt_injection", "jailbreak", "role_confusion", "exfiltration"]
@@ -48,6 +51,7 @@ ATTACKER_NAMES = ["prompt_injection", "jailbreak", "role_confusion", "exfiltrati
 # Severity levels from most to least serious.
 SEVERITY_LEVELS = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]
 
+# ===== 4. OUTPUT: where the reports are written =====
 # ---------------------------------------------------------------- output
 # Folder where the Report Agent writes the JSON and Markdown reports.
 REPORT_DIR = "reports"

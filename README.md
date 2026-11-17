@@ -36,8 +36,8 @@ Severity levels from most to least serious: CRITICAL (secret code leaked), HIGH 
 
 ## Install (macOS)
 
-1. Install Ollama from https://ollama.com and pull the models:
-   `ollama pull llama3.2:3b` and `ollama pull mxbai-embed-large`
+1. Install Ollama from https://ollama.com and pull the model:
+   `ollama pull llama3.2:3b`
 2. Create the environment and install packages:
    `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 

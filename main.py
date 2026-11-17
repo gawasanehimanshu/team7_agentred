@@ -15,6 +15,7 @@ Options:
     --mode    seed, free, mutate or adaptive          (default: adaptive)
     --rounds  maximum number of attacker rounds       (default: MAX_ROUNDS in config.py)
 """
+# ===== 1. IMPORTS =====
 import argparse
 
 from attackers import PayloadGenerator
@@ -25,6 +26,7 @@ from report import report_node
 from targets import make_target
 
 
+# ===== 2. PROGRESS PRINTER: prints what every node of the graph just did =====
 def make_progress_printer():
     """Return a callback that prints what every node of the graph just did."""
     # Remember how many trials were already printed, so that each trial is shown only once.
@@ -52,6 +54,7 @@ def make_progress_printer():
     return show
 
 
+# ===== 3. MAIN: read the options, run the workflow and print the summary =====
 def main() -> None:
     parser = argparse.ArgumentParser(description="AgentRed: automated multi-agent red teaming")
     parser.add_argument("--target", choices=["mock", "ollama"], default="ollama")
@@ -88,5 +91,6 @@ def main() -> None:
     print("  " + report["files"]["json"])
 
 
+# ===== 4. ENTRY POINT: python main.py [options] =====
 if __name__ == "__main__":
     main()
